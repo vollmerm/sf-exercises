@@ -612,15 +612,15 @@ Fixpoint inc (b : bin) : bin :=
   | M b' => T (inc b')  (* 2n + 1 -> 2(n + 1) *)
   end.
 
-Fixpoint bin2nat (b : bin) : nat :=
+Fixpoint bin_to_nat (b : bin) : nat :=
   match b with
   | Z    => O
-  | T b' => (bin2nat b') * 2
-  | M b' => S ((bin2nat b') * 2)
+  | T b' => (bin_to_nat b') * 2
+  | M b' => S ((bin_to_nat b') * 2)
   end.
 
-Theorem inc_bin2nat_comm: forall b,
-  bin2nat (inc b) = S (bin2nat b).
+Theorem bin_comm: forall b,
+  bin_to_nat (inc b) = S (bin_to_nat b).
 Proof.
   intros b. induction b as [| b' | b'].
   Case "b = Z". simpl. reflexivity.
@@ -656,7 +656,67 @@ Qed.
     here.
 *)
 
-(* FILL IN HERE *)
+
+Fixpoint nat_to_bin (n : nat) : bin :=
+  match n with
+  | 0     => Z
+  | S n' => inc (nat_to_bin n')
+  end.
+
+Theorem nat_bin_nat : 
+  forall n : nat,
+    bin_to_nat (nat_to_bin n) = n.
+Proof.
+  intros n. induction n as [| n'].
+  Case "n = 0". simpl. reflexivity.
+  Case "n = S n'". simpl. rewrite bin_comm. rewrite IHn'. reflexivity.
+Qed.
+
+(* The same natural number can be represented in more than one way
+   in binary! To prove the round-trip property going the other way
+   we must use a normalization function. *)
+
+Definition bin_double (b : bin) : bin :=
+  match b with
+  | Z => Z
+  | c => T c
+  end.
+
+Fixpoint normalize (b : bin) : bin :=
+  match b with
+    | Z    => Z
+    | T b' => bin_double (normalize b')
+    | M b' => inc (bin_double (normalize b'))
+  end.
+
+Theorem double_nat_to_bin_comm: forall n,
+  nat_to_bin (n * 2) = bin_double (nat_to_bin n).
+Proof.
+  intros n. induction n as [| n'].
+  Case "n = 0". simpl. reflexivity.
+  Case "n = S n'". simpl. rewrite IHn'.
+    assert (H: forall b, inc (inc (bin_double b)) = bin_double (inc b)).
+    SCase "assertion". simpl. destruct b as [| b' | b'].
+      SSCase "b = Z". simpl. reflexivity.
+      SSCase "b = T b'". simpl. reflexivity.
+      SSCase "b = M b'". simpl. reflexivity.
+    rewrite H. reflexivity.
+Qed.
+      
+
+Theorem bin_nat_bin :
+  forall b : bin,
+    nat_to_bin (bin_to_nat b) = normalize b.
+Proof.
+  intros b. induction b as [| b' | b'].
+  Case "b = Z". simpl. reflexivity.
+  Case "b = T b'". simpl. rewrite double_nat_to_bin_comm. 
+    rewrite IHb'. reflexivity.
+  Case "b = M b'". simpl. rewrite double_nat_to_bin_comm.
+    rewrite IHb'. reflexivity.
+Qed.
+
+
 (** [] *)
 
 (* ###################################################################### *)
@@ -765,7 +825,16 @@ Proof.
 
 (** Theorem: Addition is commutative.
 
-    Proof: (* FILL IN HERE *)
+    For any natural numbers n and m, n + m = m + n.
+    Proof by induction on n:
+      When n = 0, we must show 0 + m = m + 0. This follows trivially by 
+        the definition of +.
+      When n = S n', and n' + m = m + n'. We must show that
+        (S n') + m = m + (S n'). By properties of +, we know that
+        forall x y, (S x) + y = S (x + y). Thus, we must show
+        that S (n' + m) = S (m + n'), which is trivially reducable
+        to our inductive hypothesis.
+
 *)
 (** [] *)
 
@@ -776,7 +845,13 @@ Proof.
 
     Theorem: [true = beq_nat n n] for any [n].
 
-    Proof: (* FILL IN HERE *)
+    Proof by induction on n.
+      When n = 0, we must show that 0 must equal 0. This is trivially true.
+      When n = S n', we must show that (S n') = (S n') is true,
+        given n' = n'. By the properties of inductive data types,
+        we know that constructors are injective, so (S x) = (S y) implies
+        that x = y. Our inductive hypothesis says n' = n', so
+        we can conclude (S n') = (S n')
 [] *)
 
 (** $Date: 2014-12-31 15:31:47 -0500 (Wed, 31 Dec 2014) $ *)
