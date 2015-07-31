@@ -1,13 +1,13 @@
 (** * Poly: Polymorphism and Higher-Order Functions *)
 
-(** In this chapter we continue our development of basic 
+(** In this chapter we continue our development of basic
     concepts of functional programming.  The critical new ideas are
     _polymorphism_ (abstracting functions over the types of the data
     they manipulate) and _higher-order functions_ (treating functions
     as data).
 *)
 
-Require Export Lists.   
+Require Export Lists.
 
 (* ###################################################### *)
 (** * Polymorphism *)
@@ -169,11 +169,16 @@ Inductive grumble (X:Type) : Type :=
       - [e bool true]
       - [e mumble (b c 0)]
       - [e bool (b c 0)]
-      - [c] 
-(* FILL IN HERE *)
+      - [c]
 *)
 (** [] *)
-
+(* Check (d (b a 5)). wrong *)
+Check (d mumble (b a 5)).
+Check (d bool (b a 5)).
+Check (e bool true).
+Check (e mumble (b c 0)).
+(* Check (e bool (b c 0)). wrong *)
+Check c.
 
 (** **** Exercise: 2 stars (baz_num_elts)  *)
 (** Consider the following inductive definition: *)
@@ -182,8 +187,11 @@ Inductive baz : Type :=
    | x : baz -> baz
    | y : baz -> bool -> baz.
 
-(** How _many_ elements does the type [baz] have? 
-(* FILL IN HERE *)
+(** How _many_ elements does the type [baz] have?
+
+This is a confusing question. I think the answer is 0, since it's impossible
+to actually construct a value of type [baz].
+
 *)
 (** [] *)
 
@@ -286,14 +294,14 @@ Definition list123' := cons _ 1 (cons _ 2 (cons _ 3 (nil _))).
     type argument(s) of a given function. The [Arguments] directive
     specifies the name of the function or constructor, and then lists
     its argument names, with curly braces around any arguments to be
-    treated as implicit. 
+    treated as implicit.
     *)
 
 Arguments nil {X}.
 Arguments cons {X} _ _.  (* use underscore for argument position that has no name *)
 Arguments length {X} l.
 Arguments app {X} l1 l2.
-Arguments rev {X} l. 
+Arguments rev {X} l.
 Arguments snoc {X} l v.
 
 (* note: no _ arguments required... *)
@@ -374,35 +382,50 @@ Definition list123''' := [1; 2; 3].
     and complete the proofs below. *)
 
 Fixpoint repeat {X : Type} (n : X) (count : nat) : list X :=
-  (* FILL IN HERE *) admit.
+  match count with
+    | 0 => []
+    | S count' => n :: (repeat n count')
+  end.
 
 Example test_repeat1:
   repeat true 2 = cons true (cons true nil).
- (* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 
 Theorem nil_app : forall X:Type, forall l:list X,
   app [] l = l.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X l. induction l as [| x xs].
+  Case "l = []". simpl. reflexivity.
+  Case "l = x::xs". simpl. reflexivity.
+Qed.
 
 Theorem rev_snoc : forall X : Type,
                      forall v : X,
                      forall s : list X,
   rev (snoc s v) = v :: (rev s).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros x v s. induction s as [|y ys].
+  Case "s = []". simpl. reflexivity.
+  Case "s = y::ys". simpl. rewrite IHys. simpl. reflexivity.
+Qed.
 
 Theorem rev_involutive : forall X : Type, forall l : list X,
   rev (rev l) = l.
 Proof.
-(* FILL IN HERE *) Admitted.
+  intros X l. induction l as [| x xs].
+  Case "l = []". simpl. reflexivity.
+  Case "l = x::xs". simpl. rewrite rev_snoc. rewrite IHxs. reflexivity.
+Qed.
 
 Theorem snoc_with_append : forall X : Type,
                          forall l1 l2 : list X,
                          forall v : X,
   snoc (l1 ++ l2) v = l1 ++ (snoc l2 v).
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X l1 l2 v. induction l1 as [| x xs].
+  Case "l1 = []". simpl. reflexivity.
+  Case "l1 = x::xs". simpl. rewrite IHxs. reflexivity.
+Qed.
 (** [] *)
 
 (* ###################################################### *)
@@ -472,6 +495,9 @@ Fixpoint combine {X Y : Type} (lx : list X) (ly : list Y)
       print?   []
 *)
 
+Check @combine. (* forall X Y : Type, list X -> list Y -> list (X * Y) *)
+Eval compute in (combine [1;2] [false;false;true;true]). (* = [(1, false); (2, false)]
+                                                            : list (nat * bool) *)
 (** **** Exercise: 2 stars (split)  *)
 (** The function [split] is the right inverse of combine: it takes a
     list of pairs and returns a pair of lists.  In many functional
@@ -483,12 +509,17 @@ Fixpoint combine {X Y : Type} (lx : list X) (ly : list Y)
 Fixpoint split
            {X Y : Type} (l : list (X*Y))
            : (list X) * (list Y) :=
-(* FILL IN HERE *) admit.
+  match l with
+    | [] => ([],[])
+    | (x,y)::ls => match split ls with
+                     | ([],[]) => ([x],[y])
+                     | (xs,ys) => (x::xs,y::ys)
+                   end
+  end.
 
 Example test_split:
   split [(1,false);(2,false)] = ([1;2],[false;false]).
-Proof.
-(* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 (** [] *)
 
 (* ###################################################### *)
@@ -502,8 +533,8 @@ Inductive option (X:Type) : Type :=
   | Some : X -> option X
   | None : option X.
 
-Arguments Some {X} _. 
-Arguments None {X}. 
+Arguments Some {X} _.
+Arguments None {X}.
 
 (** *** *)
 (** We can now rewrite the [index] function so that it works
@@ -529,7 +560,10 @@ Proof. reflexivity.  Qed.
     passes the unit tests below. *)
 
 Definition hd_opt {X : Type} (l : list X)  : option X :=
-  (* FILL IN HERE *) admit.
+  match l with
+    | [] => None
+    | (x::_) => Some x
+  end.
 
 (** Once again, to force the implicit arguments to be explicit,
     we can use [@] before the name of the function. *)
@@ -537,9 +571,9 @@ Definition hd_opt {X : Type} (l : list X)  : option X :=
 Check @hd_opt.
 
 Example test_hd_opt1 :  hd_opt [1;2] = Some 1.
- (* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 Example test_hd_opt2 :   hd_opt  [[1];[2]]  = Some [1].
- (* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 (** [] *)
 
 (* ###################################################### *)
@@ -629,8 +663,7 @@ Definition prod_curry {X Y Z : Type}
     the theorems below to show that the two are inverses. *)
 
 Definition prod_uncurry {X Y Z : Type}
-  (f : X -> Y -> Z) (p : X * Y) : Z :=
-  (* FILL IN HERE *) admit.
+  (f : X -> Y -> Z) (p : X * Y) : Z := f (fst p) (snd p).
 
 (** (Thought exercise: before running these commands, can you
     calculate the types of [prod_curry] and [prod_uncurry]?) *)
@@ -641,13 +674,16 @@ Check @prod_uncurry.
 Theorem uncurry_curry : forall (X Y Z : Type) (f : X -> Y -> Z) x y,
   prod_curry (prod_uncurry f) x y = f x y.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X Y Z f x y. unfold prod_uncurry. unfold prod_curry. reflexivity.
+Qed.
 
 Theorem curry_uncurry : forall (X Y Z : Type)
                                (f : (X * Y) -> Z) (p : X * Y),
   prod_uncurry (prod_curry f) p = f p.
 Proof.
-  (* FILL IN HERE *) Admitted.
+  intros X Y Z f p. unfold prod_uncurry. unfold prod_curry.
+  assert (H: (fst p, snd p) = p). destruct p. reflexivity. rewrite H. reflexivity.
+Qed.
 (** [] *)
 
 (* ###################################################### *)
@@ -736,15 +772,15 @@ Proof. reflexivity.  Qed.
     7. *)
 
 Definition filter_even_gt7 (l : list nat) : list nat :=
-  (* FILL IN HERE *) admit.
+  filter (fun x => andb (evenb x) (negb (ble_nat x 7))) l.
 
 Example test_filter_even_gt7_1 :
   filter_even_gt7 [1;2;6;9;10;3;12;8] = [10;12;8].
- (* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 
 Example test_filter_even_gt7_2 :
   filter_even_gt7 [5;2;6;19;129] = [].
- (* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 (** [] *)
 
 (** **** Exercise: 3 stars (partition)  *)
@@ -762,12 +798,12 @@ Example test_filter_even_gt7_2 :
 
 Definition partition {X : Type} (test : X -> bool) (l : list X)
                      : list X * list X :=
-(* FILL IN HERE *) admit.
+  (filter test l, filter (fun x => negb (test x)) l).
 
 Example test_partition1: partition oddb [1;2;3;4;5] = ([1;3;5], [2;4]).
-(* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 Example test_partition2: partition (fun x => false) [5;9;0] = ([], [5;9;0]).
-(* FILL IN HERE *) Admitted.
+Proof. reflexivity. Qed.
 (** [] *)
 
 (* ###################################################### *)
@@ -1000,9 +1036,9 @@ Theorem unfold_example_bad : forall m n,
   plus3 n + 1 = m + 1.
 Proof.
   intros m n H.
-(* At this point, we'd like to do [rewrite -> H], since 
-     [plus3 n] is definitionally equal to [3 + n].  However, 
-     Coq doesn't automatically expand [plus3 n] to its 
+(* At this point, we'd like to do [rewrite -> H], since
+     [plus3 n] is definitionally equal to [3 + n].  However,
+     Coq doesn't automatically expand [plus3 n] to its
      definition. *)
   Abort.
 
@@ -1083,7 +1119,7 @@ Definition fold_map {X Y:Type} (f : X -> Y) (l : list X) : list Y :=
 (** Recall the definition of the [index] function:
    Fixpoint index {X : Type} (n : nat) (l : list X) : option X :=
      match l with
-     | [] => None 
+     | [] => None
      | a :: l' => if beq_nat n O then Some a else index (pred n) l'
      end.
    Write an informal proof of the following theorem:
@@ -1107,7 +1143,7 @@ Definition nat := forall X : Type, (X -> X) -> X -> X.
 (** Let's see how to write some numbers with this notation. Any
     function [f] iterated once shouldn't change. Thus, *)
 
-Definition one : nat := 
+Definition one : nat :=
   fun (X : Type) (f : X -> X) (x : X) => f x.
 
 (** [two] should apply [f] twice to its argument: *)
@@ -1130,7 +1166,7 @@ Definition three : nat := @doit3times.
 
 (** Complete the definitions of the following functions. Make sure
     that the corresponding unit tests pass by proving them with
-    [reflexivity]. *)    
+    [reflexivity]. *)
 
 (** Successor of a natural number *)
 
@@ -1163,7 +1199,7 @@ Proof. (* FILL IN HERE *) Admitted.
 
 (** Multiplication *)
 
-Definition mult (n m : nat) : nat := 
+Definition mult (n m : nat) : nat :=
   (* FILL IN HERE *) admit.
 
 Example mult_1 : mult one one = one.
@@ -1199,4 +1235,3 @@ End Church.
 (** [] *)
 
 (** $Date: 2014-12-31 11:17:56 -0500 (Wed, 31 Dec 2014) $ *)
-
